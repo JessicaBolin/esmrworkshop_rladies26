@@ -1,5 +1,6 @@
 project:
   type: book
+  output-dir: docs
 
 book:
   title: "RLadies webinar: R for marine ecologists: wrangling Earth System Model outputss"
