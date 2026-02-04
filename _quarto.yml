@@ -1,0 +1,41 @@
+project:
+  type: book
+
+book:
+  title: "RLadies webinar: R for marine ecologists: wrangling Earth System Model outputss"
+  author: "Jessica Bolin & Nerea Ochoa Lezama"
+  date: "18/02/2026"
+  cover-image: images/cmsi.png
+  sidebar:
+    style: docked
+    background: light
+  chapters:
+    - index.qmd
+    - _x_Acronyms.qmd
+    - _xxx_prerequisites.qmd
+    - _1_whatisanesm.qmd
+    - _2_downloadesm.qmd
+    - _3_regridreproject.qmd
+    - _4_oisst.qmd
+    - _5_biascorrection.qmd
+    - _6_taylordiagrams.qmd
+    - _7_projections.qmd
+    - _xxxxx_handyresources.qmd
+    - _xxxxxx_references.qmd
+  repo-url: https://github.com/JessicaBolin
+  
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: cosmo
+    grid:
+      sidebar-width: 400px
+      body-width: 800px
+      margin-width: 500px
+      gutter-width: 1.5rem
+  pdf:
+    documentclass: scrreprt
+
+editor: visual

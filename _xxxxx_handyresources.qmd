@@ -1,0 +1,11 @@
+# Handy resources
+
+-   [CDO reference card](https://duncanjg.wordpress.com/wp-content/uploads/2008/02/cdo_refcard.pdf), listing common operators
+
+-   [`hotrstuff`](https://snbuenafe.github.io/hotrstuff/index.html), an upcoming `R` package that's currently in development (as of December 2024) to facilitate the rapid download, wrangling and processing of ESM output from CMIP. Keep an eye on this - a lot of the functions in this package correspond to tasks we learned today!
+
+-   [`climate4R`](https://github.com/SantanderMetGroup/climate4R), a bundle of R packages for transparent climate data access, post-processing (including data collocation and bias correction / downscaling) and visualization.
+
+-   A great [explainer](https://www.carbonbrief.org/qa-how-do-climate-models-work/#inout) from CarbonBrief on how climate models work, and another [explainer](https://www.carbonbrief.org/cmip6-the-next-generation-of-climate-models-explained/) on CMIP6 more broadly.
+
+-   A good [news article](https://www.theatlantic.com/science/archive/2025/01/climate-models-earth/681207/?gift=1wJJOWpbGcy0FRPza_6RtAw5tAsjLHEBVLmgdS-pWeI&utm_source=copy-link&utm_medium=social&utm_campaign=share) on the limitations of climate modelling efforts.

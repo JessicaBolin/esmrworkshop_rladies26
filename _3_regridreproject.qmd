@@ -1,0 +1,158 @@
+# Remapping
+
+::: callout-important
+Note that interpolation, regridding and remapping mean the same thing (for the purposes of our workshop).
+:::
+
+```{r, include = F, echo = F}
+source("/Users/admin/Documents/GitHub/esmRworkshop_rladies26/__scripts/helpers.R")
+```
+
+## Inspect an ESM
+
+### Panoply
+
+We can quickly visualize what our ESM outputs look like, using the `Panoply` software. Panoply is a great tool to quickly inspect netCDF files, without reading them into R.
+
+Open one of the `.nc` files in Panoply. You'll see the dashboard below. The left pane shows the variables and dimensions contained within the file. The right pane shows the metadata in netCDF format.
+
+![](images/panoply.png){fig-align="center"}
+
+To view a map, click on the variable `tos`, and then **Create Plot** in the top left hand corner. A new dialogue box pops up - accept the defaults and click **Create.**
+
+![](images/panoply2.png){fig-align="center"}
+
+Now you can see a 2D field of sea-surface temperature for your time period of interest, and `Panoply` has georeferenced it. You can cycle between months in the **Plot Controls** dialogue box. If you can't see this, click **Window -\> Plot Controls** from the Toolbar. Now, you can zoom in and move the plot around at will.
+
+![](images/panoply3.png){fig-align="center"}
+
+### R
+
+`Panoply` is great for quickly visualizing `.nc` files, but we can't do any spatial analyses - we now need `R`. Let's plot a layer of one of the ESMs we have downloaded, to see what it looks like.
+
+```{r}
+rr <- rast(paste0(pth, cmip_pth, "/tos_Omon_ACCESS-CM2_historical_r1i1p1f1_gn_185001-201412.nc")) 
+rr <- rr[[1]] #the first layer
+plot(rr)
+```
+
+Ew! What's going on here!?
+
+## Remapping
+
+Different institutions can serve their ESM's on different grids. For example, many ESM grids are georeferenced on a sphere, where pole singularities and convergence of longitude meridians at the poles present issues for data visualisation. `Panoply` took care of this internally, but in R, we need to remap our files from a **spherical grid** to a **rectangular grid**. The most common remapping 'method' between grids with spherical coordinates is with **bilinear interpolation**.
+
+::: callout-caution
+You can also use **first order conservative remapping** if bilinear interpolation fails (which may occur if the input grid is 'unstructured' as opposed to 'spherical').
+:::
+
+First, let's inspect the metadata associated with our source input file using `terra`
+
+```{r}
+rr
+```
+
+::: {.callout-important collapse="true"}
+# We can also check more detailed metadata contained in the ESM file using `ncdf4::nc_open()`
+
+This gives you the same information after reading a file into `Panoply`.
+
+```{r}
+nc <- nc_open(paste0(pth, cmip_pth, "/tos_Omon_ACCESS-CM2_historical_r1i1p1f1_gn_185001-201412.nc"))
+nc
+```
+:::
+
+We can see that the resolution of our file is 1˚, and is on a 0-360˚ lat/lon grid. Let's remap the file so it conforms to -180 to 180˚ lat/lon, crops the extent to the ocean off California, and changes the resolution to 0.25˚ to match the resolution of an observational data product we'll be using in the next step (i.e., OISST for bias correction). Very important to note here that we're not 'increasing' the resolution of our product, *per se* - we're not ***gaining*** any data here, we're just remapping the ESM to a finer resolution.
+
+------------------------------------------------------------------------
+
+### A (brief) intro to CDO
+
+`CDO` provides a wide range of functions and operators for processing and analyzing climate data in netCDF format. `CDO` syntax is quite simple. `CDO` is often deployed through the terminal/shell. A basic line of code looks like:
+
+cdo **-operator** *input_file/s output_file/s*
+
+Where we: (i) call `cdo`, (ii) specify the operator, (iii) define the input file/s, (iv) define the output file/s.
+
+::: {.callout-tip collapse="true"}
+# Common CDO operators
+
+`cdo -yearmean` calculates the annual mean of a monthly data input netCDF file\
+`cdo -yearmin` calculates the annual min of a monthly data input netCDF file\
+`cdo -yearmax` calculates the annual max of a monthly data input netCDF file\
+`cdo -ensmean` calculates the ensemble mean of several netCDF files. If your input files are different models, this function will estimate a mean of all those models\
+`cdo -vertmean` calculates the vertical mean for netCDF with olevel (i.e., depth)\
+`cdo -mergetime` merge all the netCDF files in your directory
+:::
+
+### Remapping with CDO and R
+
+Here, we define a function that leverages the power of `CDO` from within our `R` environment (as opposed through the terminal/shell).
+
+```{r, eval = F}
+remap_n_crop_temp <- function(nc_file,
+                              cell_res = 0.25, 
+                              infold = paste0(pth, cmip_pth), 
+                              outfold = paste0(pth, cmip_pth_proc),
+                              xmin = -126, xmax = -115, ymin = 32, ymax = 43) {
+  
+  system(paste0("cdo -L -sellonlatbox,", xmin, ",", xmax, ",", ymin, ",", ymax,  
+                " -remapbil,r", 360*(1/cell_res), "x", 180*(1/cell_res), 
+                " -select,name=tos ", infold, "/", nc_file, " ", outfold, "/", nc_file))  
+  
+}
+
+fileys <- list.files(paste0(pth, cmip_pth)) #list file names of downloaded ESMs
+
+w <- 14 #number of workers
+plan(multisession, workers = w) # Change to multi-threaded processing
+tic(); future_walk(fileys, remap_n_crop_temp); toc() #Run the function in parallel (takes 8 sec for Jessie)
+plan(sequential) # Return to single threaded processing 
+```
+
+> Jessie speed: \~8s
+
+### Function explainer
+
+First, the `remap_n_crop_temp()` function arguments:
+
+-   `nc_file` = the ESM file we downloaded from ESGF
+-   `cell_res` = the target resolution of your ESM, in degrees ˚
+-   `infold` = the input folder where the ESM `.nc` files are stored (i.e., `/data`)
+-   `outfold` = the output folder where our processed ESM files will be stored (i.e., `/processed_data/`)
+-   `xmin, xmax, ymin, ymax` = the bounding box (lat/lon), of our extent encompassing the ocean off of California
+
+The next chunk of code contained within the `system()` function uses `CDO` commands:
+
+-   `paste0("cdo -L` = Lock I/O (input/output read/write data sequential access)
+-   `sellonlatbox,"` = select lon/lat box
+-   `xmin, ",", xmax, ",", ymin, ",", ymax,` = boundaries of extent
+-   `-remapbil,r"` = bilinear interpolation of the input grid (input grid MUST be curvilinear quadrilateral/spherical coordinates). Otherwise, use conservative remapping for an unstructured grid with `-remapcon`
+-   `360*(1/cell_res), "x", 180*(1/cell_res)` = adjust resolution according to rows (y) and columns (x) expected for target resolution.
+-   `" -select,name=tos ",` = select variable name field from infile and write to outfile
+-   `infold, "/", nc_file, " ",` = input file path and file name
+-   `outfold, "/", nc_file))` = output file path and file name
+
+::: callout-important
+`CDO` requires syntax (i..e, spaces and commas) to be precise. If your code doesn't run, first check that you have them in the right places.
+:::
+
+Running this chunk of code within `system()` sends this code to the terminal/shell, opposed to R.
+
+Then, we list the names of all of our input files with `fileys <- list.files("data")`.
+
+Finally, we use a `for loop` to iterate our function over each input file. We use the `tic()` and `toc()` functions from `tictoc()` to time how long our code takes to run. In my case, this takes \~30 seconds across the six files. R will outputs the following message after each iteration: `# cdo(1) remapbil: Bilinear weights from curvilinear (360x300) to lonlat (1440x720) grid, with source mask (69782)` - this is normal!
+
+## Check that it worked
+
+```{r}
+# Read in one of the processed output files
+rr <- rast(paste0(pth, cmip_pth_proc, "/tos_Omon_ACCESS-CM2_historical_r1i1p1f1_gn_185001-201412.nc"))
+rr <- rr[[1]] #first layer 
+plot(rr, main = "Remapped and cropped")
+maps::map("state", add = T) #add US state boundaries
+rr #display metadata
+```
+
+Great! We've successfully remapped to a rectangular lat/lon grid, changed the resolution to 0.25˚, and cropped the extent from global to just off California.

@@ -1,0 +1,479 @@
+# Making projections
+
+Time to make some projections! We will make projections on two IPCC AR6 time periods: near-term (2020-2040) and long-term (2080-2100).
+
+::: callout-caveat
+Note - In general, ESMs (which are externally forced) can't really be used for short-term forecasts (such as a projection for one year in the future). Here, we show you how to create projections anyway, and you can amend to a time period of interest for your own work.
+:::
+
+## Time series
+
+We are going to create two time series of temperature from 2015 to 2100, for the entire California Current region - one for each SSP.
+
+### Create yearly averages of temperature
+
+Because we are interested in the long-term trend of temperature out to 2100, we are going to average our temperature values across each year, and, apply a five-year moving window to smooth out any year-to-year variability.
+
+```{r, include = F}
+pth <- "/Users/admin/Documents/GitHub/esmRworkshop_rladies26"
+source(paste0(pth, "/__scripts/helpers.R"))
+```
+
+```{r, eval = F}
+#| code-fold: true
+
+models = c("ACCESS-CM2|IPSL-CM6A-LR")
+models2 = c("ACCESS-CM2", "IPSL-CM6A-LR")
+
+indir_proj <- paste0(pth, "/__data/bias_correct/esm/_4_bias_corrected")
+outdir <- "__data/timeseries"
+
+# Projections -------------------------------------------------------------
+
+timeseries_ssp <- function(ssp) {
+  
+  allfiles_proj <- list.files(indir_proj, pattern = models, full.names = T)
+  allfiles_proj2 <- allfiles_proj[grep(ssp, allfiles_proj)]
+  rr <- rast(allfiles_proj2)
+  rr <- rr[[time(rr) < "2100-12-31"]] #Only data until 2100
+  dateys <- time(rr) %>% unique
+  years <- lubridate::year(dateys) %>% unique #get years
+
+  emplist <- list()
+  emplist_allmodels <- list()
+  
+  ### Ensemble mean
+  for (i in 1:length(years)) {
+    
+    alldates <- dateys[grep(years[i], dateys)]
+    rasty <- rr[[time(rr) == alldates]]
+    meanrast <- mean(rasty) # Average across the year
+    meanval <- values(meanrast) %>% mean(na.rm=T) #Get average temp for California 
+    forlist <- data.frame(date = years[i], value = meanval) 
+    emplist[[i]] <- forlist
+    print(paste0("ens_", years[i]))
+  }
+  
+  ### Individual models
+  for (j in 1:length(models2)) {
+    emplist_indmodel <- list()
+
+    for (h in 1:(length(years)-1)) {
+      modelrast <- rast(allfiles_proj2[grep(models2[j], allfiles_proj2)])
+      
+      dateys <- time(modelrast) %>% unique
+      alldates <- dateys[grep(years[h], dateys)]
+      modelrast <- modelrast[[time(modelrast) == alldates]]
+      meanrast <- mean(modelrast) 
+      meanval <- values(meanrast) %>% mean(na.rm=T)
+      forlist <- data.frame(model = models2[j], date = years[h], value = meanval)
+      emplist_indmodel[[h]] <- forlist
+    }
+    
+    toadd <- do.call(rbind, emplist_indmodel)
+    emplist_allmodels[[j]] <- toadd
+    print(models2[j])
+  }
+  
+  saveRDS(emplist, 
+          paste0("__data/timeseries/sst_year_proj_ens_",
+                 ssp, ".RDS"))
+  saveRDS(emplist_allmodels,
+          paste0("__data/timeseries/sst_year_proj_ind_",
+                 ssp, ".RDS"))
+}
+
+ssps <- c("ssp245", "ssp585")
+tic(); future_walk(ssps, timeseries_ssp); toc() #26 seconds for both
+
+
+```
+
+> Jessie speed: \~26s
+
+This results in two dataframes for each SSP: (i) one containing the ensemble mean of temperature for each year, and (ii) one containing the mean temperature across each model. For example...
+
+```{r}
+# Ensemble mean
+ens <- readRDS("__data/timeseries/sst_year_proj_ens_ssp245.RDS")
+ens <- do.call (rbind, ens)
+head(ens)
+```
+
+```{r}
+# For each ESM...
+ind <- readRDS("__data/timeseries/sst_year_proj_ind_ssp245.RDS")
+ind <- do.call (rbind, ind)
+head(ind)
+```
+
+::: callout-caution
+Today, we're using the ensemble mean. But in your own work, you may want to consider using the ensemble median instead. The median may be less impacted by outliers/extremes in the data, especially if you're using ESMs that are known to be ['too-hot'](https://www.nature.com/articles/d41586-022-01192-2) in your region of interest.
+:::
+
+### Bind everything and apply 5-yr smooth
+
+Here, we apply a 5 year smooth to our time series via the `window_size` argument in our `smooth_esms()` function. We do this to smooth out some inter-annual variability, as we're interested in long-term trends.
+
+```{r, eval = F}
+#| code-fold: true
+
+smooth_esms <- function(ssp, window_size) {
+
+# Ensemble mean  
+timeseries_proj_ens <- readRDS(paste0("__data/timeseries/sst_year_proj_ens_", ssp, ".RDS"))
+
+  ens <- do.call(rbind, timeseries_proj_ens)
+  zoo_data <- zoo(ens$value, order.by = ens$date)
+  smoothed_esm <- rollapply(zoo_data, width = window_size, 
+                            FUN = mean, 
+                            align = "center", 
+                            fill = "extend")
+  smooth_esm <- data.frame(date = time(smoothed_esm), 
+                              values = coredata(smoothed_esm))
+  assign(paste0("smooth_esm_", ssp), 
+         smooth_esm, 
+         envir = globalenv())
+  
+# Individual models
+  timeseries_proj <- readRDS(paste0("__data/timeseries/sst_year_proj_ind_", ssp, ".RDS"))
+  timeseries_allmodels <- do.call(rbind, timeseries_proj)
+  allmodels <- timeseries_allmodels
+  emplist <- list()
+  ens2 <- allmodels
+
+  for (i in 1:length(unique(allmodels$model))) {
+    
+    ens <- subset(ens2, model == unique(ens2$model)[i])
+    zoo_data <- zoo(ens$value, order.by = ens$date)
+    smoothed_esm <- rollapply(zoo_data, width = window_size, 
+                              FUN = mean, align = "center", fill = "extend")
+    smooth_11_esm <- data.frame(date = time(smoothed_esm), 
+                                values = coredata(smoothed_esm))
+    smooth_11_esm$model <- unique(ens$model)
+    emplist[[i]] <- smooth_11_esm
+  }
+
+  ssp_smoothed_ind <- do.call(rbind, emplist)
+  assign(paste0("ssp_smoothed_ind_", ssp), 
+         ssp_smoothed_ind, 
+         envir = globalenv())
+  
+}
+
+tic(); smooth_esms("ssp245", window_size = 5); toc() 
+smooth_esms("ssp585", window_size = 5)
+```
+
+> Jessie speed: \~0.01s
+
+This creates four objects in our global environment, which we will use to plot our time series: `ssp_smoothed_ind_ssp245`, `ssp_smoothed_ind_ssp585`, `smooth_esm_ssp245` and `smooth_esm_ssp585`.
+
+### Plot!
+
+Finally, the fun part.
+
+```{r, eval = F}
+#| code-fold: true
+
+plot_ts <- function(ssp, sspletter) {
+
+  smooth_esm <- get(paste0("smooth_esm_", ssp)) #relies on this being in global env
+  ssp_smoothed_ind <- get(paste0("ssp_smoothed_ind_", ssp))
+  
+  # Make a kick-ass plot
+ p1 <- ggplot() +
+    geom_line(smooth_esm, 
+              mapping = aes(x = date, y = values), 
+              lwd = 1.5) +
+  geom_rect(data = data.frame(), 
+            mapping = aes(xmin = 2020, xmax = 2040, ymin = -Inf, ymax = Inf),
+             fill = "grey",
+            alpha = 0.4) +
+   geom_rect(data = data.frame(), 
+             mapping = aes(xmin = 2080, xmax = 2100, ymin = -Inf, ymax = Inf),
+             fill = "grey", 
+             alpha = 0.4) + 
+   geom_line(smooth_esm, 
+             mapping = aes(x = date, y = values), 
+             lwd = 1.5) +
+ geom_line(subset(ssp_smoothed_ind, model == "ACCESS-CM2"), 
+              mapping = aes(x = date, y = values), 
+           col = "black", 
+           alpha = 0.3) +
+    geom_line(subset(ssp_smoothed_ind, model == "IPSL-CM6A-LR"), 
+              mapping = aes(x = date, y = values), 
+              col = "black", 
+              alpha = 0.3) +
+    theme_bw() + 
+    scale_x_continuous(name = "Year", 
+                       n.breaks = 6) +
+    scale_y_continuous(name = "SST (˚C)", 
+                       limits = c(13.5, 20.5)) +
+    theme(panel.grid.minor = element_blank(),
+          plot.margin=unit(c(1,0.1,.1,0.1),"cm"),
+          axis.title = element_text(size = 20, 
+                                    family = "Arial Narrow",
+                                    face = "bold"),
+          axis.text = element_text(size = 20, 
+                                   family = "Arial Narrow"),
+          axis.title.x = element_text(margin = margin(t = 10, r = -20))) +
+   annotate("text", x = 2019, y = 20.1,
+            label = sspletter, 
+            size = 9, 
+            fontface = "bold", 
+            family = "Arial Narrow", 
+            hjust = 0, 
+            vjust = 1) +
+   annotate("text", x = 2083, y = 13.7,
+            label = "Long-term", size = 5, 
+            family = "Arial Narrow", 
+            hjust = 0, 
+            vjust = 1) + 
+   annotate("text", x = 2023, y = 13.7,
+            label = "Short-term", size = 5, 
+            family = "Arial Narrow", 
+            hjust = 0, 
+            vjust = 1)
+ 
+     ggsave(p1, 
+           filename = paste0(outdir, "/", 
+                             ssp, "_SST_timeseries_1995-2100_11yrsmooth.png"),
+           width = 8, height = 5)
+  
+}
+
+# Run function
+tic(); plot_ts("ssp245", sspletter = "SSP2-4.5"); toc() #Jessie: 0.197 seconds
+plot_ts("ssp585", sspletter = "SSP5-8.5")
+```
+
+This results in two plots: a time series of projected yearly averaged temperature from 2015-2100, for each climate scenario, for the entire California Current ecosystem. The bold black line represents the ensemble mean of the two ESMs, and the two grey lines represent the yearly means for each ESM, respectively, giving us an idea of potential model uncertainty.
+
+![](images/ssp245_SST_timeseries_1993-2100_11yrsmooth.png){fig-align="center" width="500"}
+
+![](images/ssp585_SST_timeseries_1993-2100_11yrsmooth.png){fig-align="center" width="500"}
+
+## Projections
+
+Let's make some maps.
+
+### Individual ESM projections
+
+First, we create our projections for both ESMs, across the two time periods and SSPs, and save the outputs as `.nc` files. Our projections consist of SST averaged across each month within each time period, plus, the associated standard deviation of SST.
+
+```{r, eval = F}
+#| code-fold: true
+
+models = c("ACCESS-CM2", "IPSL-CM6A-LR")
+ssps = c("ssp245", "ssp585")
+term = c("near", "long")
+outdir = paste0(pth, "/__data/projections")
+indir_proj <- paste0(pth, bc_pth, bc_pth_bc)
+
+termdf <- data.frame(timeperiod = c("near", "long"),
+                     st = c("2020-01-01", "2080-01-01"),
+                     fin = c("2040-01-01", "2100-01-01"))
+
+tic(); for (k in term) {
+  for (i in ssps) {
+    for (j in models) {
+      
+      allfiles_proj <- list.files(indir_proj, pattern = j, full.names = T)
+      allfiles_proj <- allfiles_proj[grep(i, allfiles_proj)]
+      allfiles_proj <- allfiles_proj[grep("2100", allfiles_proj)]
+      rr <- rast(allfiles_proj)
+      
+      # subset to time period
+      tp <- subset(termdf, timeperiod == k)
+      rr <- rr[[time(rr) > tp[,"st"] & time(rr) < tp[,"fin"] ]]
+      
+      # Mean and SD
+      proj_u <- mean(rr)
+      proj_sd <- stdev(rr)
+      # write to outdir
+      filename_u <- paste0(outdir, "/ind/mean_", j, "_", i, "_", k, "_", "proj.nc" )
+      filename_sd <- paste0(outdir, "/ind/sd_", j, "_", i, "_", k, "_", "proj.nc" )
+      terra::writeCDF(proj_u, filename_u, overwrite = T)
+      terra::writeCDF(proj_sd, filename_sd, overwrite = T)
+    }
+  }
+}; toc() #Jessie: 1.8 seconds
+
+```
+
+> Jessie speed: \~2s
+
+This results in...
+
+```{r}
+list.files(paste0(pth, "/__data/projections/ind"))
+```
+
+### Ensembled projections
+
+Now, we can average over the individual ESMs to create our **ensembled projections**.
+
+```{r, eval = F}
+#| code-fold: true
+tic(); for (k in term) {
+  for (i in ssps) {
+    
+      
+      allfiles_proj <- list.files(paste0(pth, "/__data/projections/ind"), 
+                                  pattern = i, full.names = T)
+      allfiles_proj <- allfiles_proj[grep(k, allfiles_proj)]
+      allfiles_proj <- allfiles_proj[grep("mean", allfiles_proj)]
+      rr <- rast(allfiles_proj)
+      
+      # Mean and SD
+      proj_u <- mean(rr)
+      proj_sd <- stdev(rr)
+    
+      # write to outdir
+      filename_u <- paste0(outdir, "/ens/mean_ens_", i, "_", k, "_", "proj.nc" )
+      filename_sd <- paste0(outdir, "/ens/sd_ens_", i, "_", k, "_", "proj.nc" )
+      terra::writeCDF(proj_u, filename_u, overwrite = T)
+      terra::writeCDF(proj_sd, filename_sd, overwrite = T)
+      
+  }
+}; toc() #Jessie: 0.3 seconds
+```
+
+> Jessie speed: \~0.3s
+
+```{r}
+list.files(paste0(pth, "/__data/projections/ens"))
+```
+
+### Delta difference
+
+Now that we have our ensembled projections of SST, we want to inspect the **delta difference**, which is the difference between projected SSTs, and baseline/observed SST experienced between 1995-2014. Essentially, how much will SST change under projected future ocean conditions?
+
+First, we create our historical average, from 1995-2014:
+
+```{r}
+#| code-fold: true
+#Ensemble average of 1995-2014 for both models
+bc_pth <- paste0(pth, "/__data/bias_correct/esm/_4_bias_corrected/")
+r1 <- rast(paste0(bc_pth, "tos_mo_ACCESS-CM2_1995-2014_bc_historical_remapped.nc"))
+r2 <- rast(paste0(bc_pth, "tos_mo_IPSL-CM6A-LR_1995-2014_bc_historical_remapped.nc"))
+rr <- c(r1, r2)
+mean_hist <- mean(rr)
+plot(mean_hist, main = "Ensembled SST 1995-2014"); maps::map("world", add = T)
+```
+
+Then, we subtract the baseline SST from our projections...
+
+```{r, eval = F}
+#| code-fold: true
+ssps = c("ssp245", "ssp585")
+
+tic(); for (i in ssps) {
+  
+  near_mean <- rast(paste0(pth, "/__data/projections/ens/mean_ens_", i, "_near_proj.nc"))
+  rr <- near_mean - mean_hist
+  writeCDF(rr, paste0(outdir, "/delta/delta_mean_ens_near_", i, ".nc"),
+           overwrite = T)
+  
+  long_mean <- rast(paste0(pth, "/__data/projections/ens/mean_ens_", i, "_long_proj.nc"))
+  rr <- long_mean - mean_hist
+  writeCDF(rr, paste0(outdir, "/delta/delta_mean_ens_long_", i, ".nc"),
+           overwrite = T)
+  
+}; toc() 
+```
+
+> Jessie speed: \~0.3s
+
+```{r}
+list.files(paste0(pth, "/__data/projections/delta"))
+```
+
+### Plot: SSP2-4.5
+
+Now, we plot. Top row = near-term projections (2020-2040) for SST (left), standard deviation of SST (mid) and delta difference (right). Bottom row = long-term projections (2080-2100).
+
+```{r, echo = F}
+#| code-fold: true
+#| crop: true
+par(mfrow=c(2,3))
+library(terra)
+deltapth = "/Users/admin/Documents/GitHub/emsrworkshop_rladies26/__data/projections/delta/"
+
+
+r2 <- rast(paste0(pth, "/__data/projections/ens/mean_ens_ssp245_near_proj.nc"))
+plot(r2, main = "Mean SST Near-term",
+     col = viridis::viridis(255),
+     range = c(11,22)); maps::map("world", add = T, fill = T, col = "grey")
+r3 <-  rast(paste0(pth, "/__data/projections/ens/sd_ens_ssp245_near_proj.nc"))
+plot(r3, main = "Std Dev SST Near-term",
+     col = viridis::magma(255),
+     range = c(0,2)); maps::map("world", add = T, fill = T, col = "grey")
+r1 <- rast("/Users/admin/Documents/GitHub/esmrworkshop_rladies26/__data/projections/delta/delta_mean_ens_near_ssp245.nc")
+
+plot(r1, main = "Delta SST Near-term",
+     col = viridis::mako(255),
+     range = c(0.5,4.5)); maps::map("world", add = T, fill = T, col = "grey")
+
+
+
+r2 <- rast(paste0(pth, "/__data/projections/ens/mean_ens_ssp245_long_proj.nc"))
+plot(r2, main = "Mean SST Long-term",
+     range = c(11,22)); maps::map("world", add = T, fill = T, col = "grey")
+r3 <-  rast(paste0(pth, "/__data/projections/ens/sd_ens_ssp245_long_proj.nc"))
+plot(r3, main = "Std Dev SD Long-term" ,
+     col = viridis::magma(255),
+     range = c(0,2)); maps::map("world", add = T, fill = T, col = "grey")
+r1 <- rast("/Users/admin/Documents/GitHub/esmrworkshop_rladies26/__data/projections/delta/delta_mean_ens_long_ssp245.nc")
+plot(r1, main = "Delta SST Long-term",
+     col = viridis::mako(255),
+     range = c(0.5,4.5)); maps::map("world", add = T, fill = T, col = "grey")
+```
+
+### Plot: SSP5-8.5
+
+...And repeat for SSP5-8.5. In this scenario, we can see the ocean off California is projected to increase by \~1˚C in the near-term, and \~4.5˚C in the long-term, compared to baseline SST (note the increased uncertainty, particularly in SoCal).
+
+```{r, echo = F}
+#| code-fold: true
+#| crop: true
+par(mfrow=c(2,3))
+library(terra)
+deltapth = "/Users/admin/Documents/GitHub/BMLworkshop/__data/projections/delta/"
+
+
+r2 <- rast(paste0(pth, "/__data/projections/ens/mean_ens_ssp585_near_proj.nc"))
+plot(r2, main = "Mean SST Near-term",
+     col = viridis::viridis(255),
+     range = c(11,22)); maps::map("world", add = T, fill = T, col = "grey")
+r3 <-  rast(paste0(pth, "/__data/projections/ens/sd_ens_ssp585_near_proj.nc"))
+plot(r3, main = "Std Dev SST Near-term",
+     col = viridis::magma(255),
+     range = c(0,2)); maps::map("world", add = T, fill = T, col = "grey")
+r1 <- rast(paste0(deltapth, "delta_mean_ens_near_ssp585.nc"))
+plot(r1, main = "Delta SST Near-term",
+     col = viridis::mako(255),
+     range = c(0.5,4.5)); maps::map("world", add = T, fill = T, col = "grey")
+
+
+r2 <- rast(paste0(pth, "/__data/projections/ens/mean_ens_ssp585_long_proj.nc"))
+plot(r2, main = "Mean SST Long-term",
+     range = c(11,22)); maps::map("world", add = T, fill = T, col = "grey")
+r3 <-  rast(paste0(pth, "/__data/projections/ens/sd_ens_ssp585_long_proj.nc"))
+plot(r3, main = "Std Dev SD Long-term" ,
+     col = viridis::magma(255),
+     range = c(0,2)); maps::map("world", add = T, fill = T, col = "grey")
+r1 <- rast(paste0(deltapth, "delta_mean_ens_long_ssp585.nc"))
+plot(r1, main = "Delta SST Long-term",
+     col = viridis::mako(255),
+     range = c(0.5,4.5)); maps::map("world", add = T, fill = T, col = "grey")
+```
+
+Woohoo! We've made SST projections for the California region using an ensemble of two ESMs, across two time periods, and, for two climate scenarios. Now, we could use these projections for species distribution modelling, marine disease projections... the list is endless! Some useful summary papers that have used ESMs to assess the impact of climate on marine fauna include [@STOCK2011] and [@DRENKARD2021].
+
+## Uncertainty
+
+We could dedicate an entire workshop to reviewing the different sources of uncertainty when working with ESMs, but we don't have time!
+
+Linked here are a few fantastic papers that delve into this topic in more detail: [@BRODIE2022], [@MORLEY2020], [@CHEUNG2016] and [@THUILLER2019].

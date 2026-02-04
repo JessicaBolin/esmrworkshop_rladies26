@@ -1,0 +1,19 @@
+# Acronyms {.unnumbered}
+
+We will be using **a lot** of acronyms during today's workshop..!
+
+-   `ACCESS-CM2` = Australian Community Climate and Earth System Simulator Coupled Model Version 2
+-   `CDO` = Climate Data Operators
+-   CMIP6 = Coupled Model Intercomparison Project Version 6
+-   ESGF = Earth System Grid Federation
+-   ESM = Earth System Model
+-   GCM = Global Coupled Model
+-   IPCC = Intergovernmental Panel on Climate Change
+-   `IPSL-CM6A-LR` = Institut Pierre-Simon Laplace Climate Model for Phase 6 of CMIP - Low Resolution
+-   netCDF = Network Common Data Form (file format = `.nc`)
+-   OISST = Optimum Interpolation Sea Surface Temperature
+-   `omon` = monthly time step
+-   `wget` = World Wide Web Get
+-   SSPs = Shared socio-economic pathways
+-   SST = Sea-surface temperature
+-   `tos` = sea-surface temperature (temperature ocean surface)

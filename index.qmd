@@ -1,0 +1,55 @@
+# Preface {.unnumbered}
+
+**Workshop date:** February 18th, 5:30-7pm
+
+**Location:** Virtual (R-Ladies webinar)
+
+**Instructors:** Jessica Bolin, Nerea Lezama Ochoa
+
+::: callout-important
+This is a condensed version of the full-day workshop. To access the full workshop notes and materials, click [here](https://jessicabolin.quarto.pub/esmrworkshop_notes/).
+:::
+
+`R` is undoubtedly the programming language of choice for many marine ecologists. However, navigating the complexities of downloading, processing and wrangling gridded oceanographic data within `R` can represent a steep learning curve. As climate-related projects continue to receive funding and the impacts of climate variability and change on our oceans become increasingly evident, **the ability to efficiently interact with, and use, Earth System Model (ESM) outputs for our research is more critical than ever**.
+
+The aim of this workshop is to train researchers in skills needed to be proficient in creating projections of physical variables from ESM outputs, with the goal of using them for ecological applications. **Specifically, we'll be creating projections of sea-surface temperature across two time periods out to 2100, across two climate scenarios, for the California Current region.**
+
+Our workshop is designed around Step 8 (pre-process the data) in the workflow of best practices for using ESMs for marine ecologists, as defined in Figure 1 within [@SCHOEMAN2023].
+
+![](images/schoemanworkflow.jpg)
+
+## Instructors
+
+Today's instructors are **Jessica Bolin** and **Nerea Lezama-Ochoa**
+
+[**Jessie**](https://jessicabolin.github.io/) is a Postdoc in Provost Lab, working on modeling and mapping climate refugia for red abalone across California. Jessie has a background in quantitative marine science and obtained her PhD from the University of the Sunshine Coast in 2024, and has broad research interests spanning climate adaptation, fisheries forecasting, marine disease ecology and sustainable seafood. Jessie has been using R since 2016, and has worked with ESMs since 2021. `jabbolin@ucdavis.edu`
+
+[**Nerea**](https://nereota1.wixsite.com/nlezamaochoa) is an Associate Project Scientist at the University of California Santa Cruz and works collaboratively with the NOAA’s Southwest Fisheries Science Center. Nerea is currently working on the conservation and management of species taken incidentally in tropical tuna purse seine fisheries (bycatch). Nerea's main research interests are ecological modeling, spatial ecology, oceanography and ecosystem-based management approaches for the conservation of marine top predators.
+
+## Workshop materials
+
+The workshop data are \~`2 GB`, so ensure you have enough storage space on your machine before downloading. If you don't have enough storage on your local machine, bring an external SSD/Hard-drive.
+
+If you're a Github user, you can fork and clone the workshop repository [here](). Then, you will then need to download the workshop data [here](), which needs to be copied into the root directory. We've added the `/data` folder to the `.gitignore` file within the root directory, since we'll be working with large files (and Github breaks when pushing/pulling large files).
+
+If you're not familiar with Github, you can download the complete workshop repository [here](/Users/admin/Dropbox/Conferences%20&%20Workshops/2025/esmrworkshop/esmRworkshop_website) from Dropbox.
+
+Alternatively, you can obtain the materials on the day from us via USB/hard-drive.
+
+We have inserted the expected time duration for running processor-intensive chunks of code in **blockquotes** throughout the eBook. This is based on Jessie's machine (MacBook Pro 2023 M3 Max 64 GB Memory). Your machine may be faster or slower, depending on its specifications.
+
+## Expected outcomes
+
+By the end of the course, participants should be able to:
+
+-   Download, inspect, and wrangle netCDF file formats within R
+-   Use `CDO` to speed up netCDF file manipulation
+-   Download ESM output from ESGF and understand terminology re. variables/naming conventions
+-   Remap and bias-correct ESM outputs from the CMIP6 suite across multiple climate scenarios and time periods
+-   Make publication-quality maps
+
+## Acknowledgements
+
+We acknowledge funding from the UC Davis Coastal and Marine Science Institute's internal grant scheme (2024-2025), and thank Bodega Marine Laboratory for providing space and equipment to run the workshop.
+
+We are very thankful for Barb Muhling (NOAA SWFSC) and Alice Pidd (UniSC) who reviewed workshop materials. We also thank Isaac Brito-Morales for developing the following `R` workshop materials [here](https://isaakbm.github.io/NACECC_workshop_2024/) and [here](https://isaakbm.github.io/ESM_240/) on analysing netCDFs and climate data, which our workshop took inspiration from. We also thank Dave Schoeman who developed and shared the first iteration of some code in this workshop, and who introduced Jessie to the world of climate models in the first place!

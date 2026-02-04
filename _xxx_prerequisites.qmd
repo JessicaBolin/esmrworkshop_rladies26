@@ -1,0 +1,260 @@
+# Prerequisites {.unnumbered}
+
+## Prerequisites
+
+Our course is not intended for absolute beginners in R. While participants don’t need to be highly proficient, a basic understanding of R and programming syntax is required. For example, participants should know how to create an R project and open a script, read in data using commands, make basic plots using `base` R, and write for loops. A basic understanding of the shell/command line is advantageous, but not required. Further, previous experience using the `terra` package and working with `netCDF` files is a plus, but again, not required.
+
+In addition to having R and RStudio already installed, you will need to install (i) `CDO`, (ii) `NCO`, (iii) `wget`, (iv) `Panoply` and (v) a suite of R packages.
+
+::: callout-important
+We **strongly** recommend using a macOS laptop for the workshop. We've found that Windows users can run into issues with installing and using `CDO`, which is required for the workshop (see below).
+
+To see if you may have software issues during our workshop, install the prerequisites below, download this folder [here](https://drive.google.com/drive/folders/17pphDrOyMFz0tm44HdkJd8TT74TOfJ91?usp=sharing), and run the `runme.R` script. If you don't run into any errors, great! If you do, you will need to do some troubleshooting before the workshop.
+:::
+
+------------------------------------------------------------------------
+
+### CDO
+
+You will need **CDO** (Climate Data Operators) installed prior to the workshop. CDO comprises a suite of over 600 operators for standard (and speedy) processing of climate and forecast model outputs. More information on CDO found [here](https://code.mpimet.mpg.de/projects/cdo).
+
+#### MacOS
+
+The simplest way to install CDO is via Homebrew. If you haven't already installed Homebrew, do so [here](https://brew.sh/). Then, open terminal and run the following code:
+
+```{r, eval = F}
+brew install cdo
+```
+
+More information available on the [CDO MacOS website](https://code.mpimet.mpg.de/projects/cdo/wiki/MacOS_Platform).
+
+#### Windows
+
+CDO is meant for use on POSIX-compatible operating systems (e.g., like Linux and MacOS), so downloading on Windows requires some extra steps.
+
+Recent versions of Windows (\>=10) includes an Ubuntu embedded Linux, offering the opportunity to install CDO via Ubuntu's native package manager. First, install the Ubuntu app from the Microsoft Store application. Then open the Ubuntu terminal and type:
+
+```{r, eval = F}
+sudo apt-get upgrade
+sudo apt-get install cdo #write your password, if prompted
+```
+
+More information available on the [CDO Windows website](https://code.mpimet.mpg.de/projects/cdo/wiki/Win32).
+
+------------------------------------------------------------------------
+
+### NCO
+
+Similar to CDO, we will install [NCO (netCDF operators)](https://nco.sourceforge.net/), which are a suite of operators that take netCDF file formats and facilitate file manipulation.
+
+#### Mac
+
+```{r, eval = F}
+brew install nco
+```
+
+#### Windows
+
+Installing `NCO` on windows can be tricky. [Here](https://sourceforge.net/p/nco/discussion/9830/thread/59fe446d/) is a discussion forum.
+
+------------------------------------------------------------------------
+
+### `wget`
+
+`wget` is a bash command used for downloading files from the internet. We will use this to download our ESMs via `wget` scripts from the ESGF website.
+
+#### macOS
+
+Run the following in terminal:
+
+```{r, eval = F}
+brew install wget
+```
+
+#### Windows
+
+Check out the link [here](https://gnuwin32.sourceforge.net/packages/wget.htm). You may need to do some extra fiddling - see [here](https://www.tomshardware.com/how-to/use-wget-download-files-command-line#:~:text=Installing%20GNU%20Wget%20on%20Windows,use%20on%20a%20Linux%20PC.) or check out Youtube for further help.
+
+------------------------------------------------------------------------
+
+### Panoply
+
+[Panoply](https://www.giss.nasa.gov/tools/panoply/) is a data viewer for netCDF, HDF and GRIB data arrays, administered by NASA Goddard Space Flight Center. **Panoply requires that your computer has a compatible Java 11 (or later version) JRE or JDK installed.**
+
+Download Panoply [here](https://www.giss.nasa.gov/tools/panoply/download/).
+
+------------------------------------------------------------------------
+
+### R Packages
+
+Ensure you have the following R packages installed, listed below.
+
+```{r, eval = F}
+#Install pacman 
+if (!require("pacman")) install.packages("pacman") 
+
+# Install packages, if not already installed 
+pacman::p_load(tidyverse, # Working with 'tidy' data
+               furrr, parallelly, purrr, # Run functions in parallel
+               tictoc, beepr, # Understand code execution time 
+               ncdf4, raster, terra, # For working with netCDFs
+               tmap, # Map visualization 
+               plotrix, # Taylor Diagrams
+               RCurl, xml2, rvest, # Downloading files 
+               zoo) 
+
+```
+
+------------------------------------------------------------------------
+
+### Changing your path
+
+Lastly, once you have downloaded the repository, you will need to open `__scripts/helpers.R`, and change your `pth` object to suit your machine (see Line 7). I've set mine as `"/Users/admin/Documents/GitHub/esmRworkshop_rladies26"`; change yours to reflect where this folder is located on your machine.
+
+------------------------------------------------------------------------
+
+::: {.callout-important collapse="true"}
+## Below are the dependencies and package versions the instructors will use for the workshop.
+
+```{r, eval = F}
+> devtools::session_info()
+
+─ Session info ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.1 (2024-06-14)
+ os       macOS Sonoma 14.5
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Los_Angeles
+ date     2026-02-04
+ rstudio  2024.04.2+764 Chocolate Cosmos (desktop)
+ pandoc   NA
+ quarto   1.5.55 @ /usr/local/bin/quarto
+
+─ Packages ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ package           * version   date (UTC) lib source
+ abind               1.4-5     2016-07-21 [1] CRAN (R 4.4.0)
+ audio               0.1-11    2023-08-18 [1] CRAN (R 4.4.0)
+ base64enc           0.1-3     2015-07-28 [1] CRAN (R 4.4.0)
+ beepr             * 2.0       2024-07-06 [1] CRAN (R 4.4.0)
+ bitops              1.0-8     2024-07-29 [1] CRAN (R 4.4.0)
+ cachem              1.1.0     2024-05-16 [1] CRAN (R 4.4.0)
+ chromote            0.5.1     2025-04-24 [1] CRAN (R 4.4.1)
+ class               7.3-22    2023-05-03 [1] CRAN (R 4.4.1)
+ classInt            0.4-11    2025-01-08 [1] CRAN (R 4.4.1)
+ cli                 3.6.5     2025-04-23 [1] CRAN (R 4.4.1)
+ codetools           0.2-20    2024-03-31 [1] CRAN (R 4.4.1)
+ colorspace          2.1-0     2023-01-23 [1] CRAN (R 4.4.0)
+ cols4all            0.8       2024-10-16 [1] CRAN (R 4.4.1)
+ crosstalk           1.2.1     2023-11-23 [1] CRAN (R 4.4.0)
+ data.table          1.16.4    2024-12-06 [1] CRAN (R 4.4.1)
+ DBI                 1.2.3     2024-06-02 [1] CRAN (R 4.4.0)
+ devtools            2.4.5     2022-10-11 [1] CRAN (R 4.4.0)
+ dichromat           2.0-0.1   2022-05-02 [1] CRAN (R 4.4.0)
+ digest              0.6.37    2024-08-19 [1] CRAN (R 4.4.1)
+ dplyr             * 1.1.4     2023-11-17 [1] CRAN (R 4.4.0)
+ e1071               1.7-16    2024-09-16 [1] CRAN (R 4.4.1)
+ ellipsis            0.3.2     2021-04-29 [1] CRAN (R 4.4.0)
+ farver              2.1.2     2024-05-13 [1] CRAN (R 4.4.0)
+ fastmap             1.2.0     2024-05-15 [1] CRAN (R 4.4.0)
+ forcats           * 1.0.0     2023-01-29 [1] CRAN (R 4.4.0)
+ fs                  1.6.6     2025-04-12 [1] CRAN (R 4.4.1)
+ furrr             * 0.3.1     2022-08-15 [1] CRAN (R 4.4.0)
+ future            * 1.67.0    2025-07-29 [1] CRAN (R 4.4.1)
+ generics            0.1.3     2022-07-05 [1] CRAN (R 4.4.0)
+ ggplot2           * 4.0.0     2025-09-11 [1] CRAN (R 4.4.1)
+ globals             0.18.0    2025-05-08 [1] CRAN (R 4.4.1)
+ glue                1.8.0     2024-09-30 [1] CRAN (R 4.4.1)
+ gridExtra           2.3       2017-09-09 [1] CRAN (R 4.4.0)
+ gtable              0.3.6     2024-10-25 [1] CRAN (R 4.4.1)
+ hms                 1.1.3     2023-03-21 [1] CRAN (R 4.4.0)
+ htmltools           0.5.8.1   2024-04-04 [1] CRAN (R 4.4.0)
+ htmlwidgets         1.6.4     2023-12-06 [1] CRAN (R 4.4.0)
+ httpuv              1.6.16    2025-04-16 [1] CRAN (R 4.4.1)
+ httr                1.4.7     2023-08-15 [1] CRAN (R 4.4.0)
+ jsonlite            2.0.0     2025-03-27 [1] CRAN (R 4.4.1)
+ KernSmooth          2.23-24   2024-05-17 [1] CRAN (R 4.4.1)
+ later               1.4.2     2025-04-08 [1] CRAN (R 4.4.1)
+ lattice             0.22-6    2024-03-20 [1] CRAN (R 4.4.0)
+ leafem              0.2.4     2025-05-01 [1] CRAN (R 4.4.1)
+ leaflegend          1.2.1     2024-05-09 [1] CRAN (R 4.4.0)
+ leaflet             2.2.2     2024-03-26 [1] CRAN (R 4.4.0)
+ leaflet.providers   2.0.0     2023-10-17 [1] CRAN (R 4.4.0)
+ leafsync            0.1.0     2019-03-05 [1] CRAN (R 4.4.0)
+ lifecycle           1.0.4     2023-11-07 [1] CRAN (R 4.4.0)
+ listenv             0.9.1     2024-01-29 [1] CRAN (R 4.4.0)
+ lubridate         * 1.9.3     2023-09-27 [1] CRAN (R 4.4.0)
+ lwgeom              0.2-14    2024-02-21 [1] CRAN (R 4.4.0)
+ magrittr            2.0.3     2022-03-30 [1] CRAN (R 4.4.0)
+ maps                3.4.2     2023-12-15 [1] CRAN (R 4.4.0)
+ maptiles            0.10.0    2025-05-07 [1] CRAN (R 4.4.1)
+ memoise             2.0.1     2021-11-26 [1] CRAN (R 4.4.0)
+ microbenchmark      1.5.0     2024-09-04 [1] CRAN (R 4.4.1)
+ mime                0.13      2025-03-17 [1] CRAN (R 4.4.1)
+ miniUI              0.1.2     2025-04-17 [1] CRAN (R 4.4.1)
+ ncdf4             * 1.22      2023-11-28 [1] CRAN (R 4.4.0)
+ pacman            * 0.5.1     2019-03-11 [1] CRAN (R 4.4.0)
+ parallelly        * 1.45.1    2025-07-24 [1] CRAN (R 4.4.1)
+ pillar              1.10.2    2025-04-05 [1] CRAN (R 4.4.1)
+ pkgbuild            1.4.8     2025-05-26 [1] CRAN (R 4.4.1)
+ pkgconfig           2.0.3     2019-09-22 [1] CRAN (R 4.4.0)
+ pkgload             1.4.0     2024-06-28 [1] CRAN (R 4.4.0)
+ plotrix           * 3.8-4     2023-11-10 [1] CRAN (R 4.4.0)
+ png                 0.1-8     2022-11-29 [1] CRAN (R 4.4.0)
+ processx            3.8.6     2025-02-21 [1] CRAN (R 4.4.1)
+ profvis             0.4.0     2024-09-20 [1] CRAN (R 4.4.1)
+ promises            1.3.3     2025-05-29 [1] CRAN (R 4.4.1)
+ proxy               0.4-27    2022-06-09 [1] CRAN (R 4.4.0)
+ ps                  1.9.1     2025-04-12 [1] CRAN (R 4.4.1)
+ purrr             * 1.0.4     2025-02-05 [1] CRAN (R 4.4.1)
+ R6                  2.6.1     2025-02-15 [1] CRAN (R 4.4.1)
+ raster            * 3.6-32    2025-03-28 [1] CRAN (R 4.4.1)
+ RColorBrewer        1.1-3     2022-04-03 [1] CRAN (R 4.4.0)
+ Rcpp                1.0.14    2025-01-12 [1] CRAN (R 4.4.1)
+ RCurl             * 1.98-1.16 2024-07-11 [1] CRAN (R 4.4.0)
+ readr             * 2.1.5     2024-01-10 [1] CRAN (R 4.4.0)
+ remotes             2.5.0     2024-03-17 [1] CRAN (R 4.4.0)
+ rlang               1.1.6     2025-04-11 [1] CRAN (R 4.4.1)
+ rstudioapi          0.17.1    2024-10-22 [1] CRAN (R 4.4.1)
+ rvest             * 1.0.4     2024-02-12 [1] CRAN (R 4.4.0)
+ s2                  1.1.9     2025-05-23 [1] CRAN (R 4.4.1)
+ S7                  0.2.0     2024-11-07 [1] CRAN (R 4.4.1)
+ scales              1.4.0     2025-04-24 [1] CRAN (R 4.4.1)
+ sessioninfo         1.2.3     2025-02-05 [1] CRAN (R 4.4.1)
+ sf                  1.0-21    2025-05-15 [1] CRAN (R 4.4.1)
+ shiny               1.11.1    2025-07-03 [1] CRAN (R 4.4.1)
+ sp                * 2.2-0     2025-02-01 [1] CRAN (R 4.4.1)
+ spacesXYZ           1.3-0     2024-01-23 [1] CRAN (R 4.4.0)
+ stars               0.6-6     2024-07-16 [1] CRAN (R 4.4.0)
+ stringi             1.8.7     2025-03-27 [1] CRAN (R 4.4.1)
+ stringr           * 1.5.1     2023-11-14 [1] CRAN (R 4.4.0)
+ terra             * 1.8-54    2025-06-01 [1] CRAN (R 4.4.1)
+ tibble            * 3.3.0     2025-06-08 [1] CRAN (R 4.4.1)
+ tictoc            * 1.2.1     2024-03-18 [1] CRAN (R 4.4.0)
+ tidyr             * 1.3.1     2024-01-24 [1] CRAN (R 4.4.0)
+ tidyselect          1.2.1     2024-03-11 [1] CRAN (R 4.4.0)
+ tidyverse         * 2.0.0     2023-02-22 [1] CRAN (R 4.4.0)
+ timechange          0.3.0     2024-01-18 [1] CRAN (R 4.4.0)
+ tmap              * 4.1       2025-05-12 [1] CRAN (R 4.4.1)
+ tmaptools           3.1-1     2021-01-19 [1] CRAN (R 4.4.0)
+ tzdb                0.5.0     2025-03-15 [1] CRAN (R 4.4.1)
+ units               0.8-7     2025-03-11 [1] CRAN (R 4.4.1)
+ urlchecker          1.0.1     2021-11-30 [1] CRAN (R 4.4.0)
+ usethis             3.1.0     2024-11-26 [1] CRAN (R 4.4.1)
+ vctrs               0.6.5     2023-12-01 [1] CRAN (R 4.4.0)
+ viridis             0.6.5     2024-01-29 [1] CRAN (R 4.4.0)
+ viridisLite         0.4.2     2023-05-02 [1] CRAN (R 4.4.0)
+ websocket           1.4.4     2025-04-10 [1] CRAN (R 4.4.1)
+ withr               3.0.2     2024-10-28 [1] CRAN (R 4.4.1)
+ wk                  0.9.4     2024-10-11 [1] CRAN (R 4.4.1)
+ XML                 3.99-0.17 2024-06-25 [1] CRAN (R 4.4.0)
+ xml2              * 1.4.1     2025-10-27 [1] CRAN (R 4.4.1)
+ xtable              1.8-4     2019-04-21 [1] CRAN (R 4.4.0)
+ zoo               * 1.8-12    2023-04-13 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+```
+:::
