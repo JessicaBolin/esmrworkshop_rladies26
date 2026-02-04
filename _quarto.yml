@@ -6,8 +6,8 @@ project:
 book:
   title: "RLadies webinar: R for marine ecologists: wrangling Earth System Model outputss"
   author: "Jessica Bolin & Nerea Ochoa Lezama"
-  date: "18/02/2026"
-  cover-image: images/cmsi.png
+  date: "02/18/2026"
+  cover-image: images/rladies.jpg
   sidebar:
     style: docked
     background: light
