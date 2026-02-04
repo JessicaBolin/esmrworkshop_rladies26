@@ -1,7 +1,6 @@
 project:
   type: book
   output-dir: docs
-  site-path: /esmrworkshop_ladies26/
 
 book:
   title: "RLadies webinar: R for marine ecologists: wrangling Earth System Model outputss"
